@@ -1,0 +1,268 @@
+import 'dart:async';
+import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/utils/time_utils.dart';
+
+class ClockPage extends StatefulWidget {
+  @override
+  _ClockPageState createState() => _ClockPageState();
+}
+
+class _ClockPageState extends State<ClockPage> {
+  String status = '';
+  late TimeOfDay _currentTime;
+  bool hasClockedIn = false;
+  bool hasClockedOut = false;
+
+  Duration _workedDuration = Duration.zero;
+  late Stopwatch _stopwatch;
+  late Ticker _ticker;
+  late Timer _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentTime = TimeOfDay.now();
+
+    _stopwatch = Stopwatch();
+    _ticker = Ticker((_) {
+      if (_stopwatch.isRunning) {
+        setState(() {
+          _workedDuration = _stopwatch.elapsed;
+        });
+      }
+    });
+    _ticker.start();
+
+    _startClock();
+    _loadClockInStatus();
+    _timer = Timer.periodic(Duration(minutes: 1), (_) => _checkForAutoClockOut());
+  }
+
+  void _startClock() {
+    Future.delayed(Duration(seconds: 1), () {
+      setState(() {
+        _currentTime = TimeOfDay.now();
+      });
+      _startClock();
+    });
+  }
+
+  Future<void> _loadClockInStatus() async {
+    final prefs = await SharedPreferences.getInstance();
+    hasClockedIn = prefs.getBool('hasClockedIn') ?? false;
+    hasClockedOut = prefs.getBool('hasClockedOut') ?? false;
+    final int? startMillis = prefs.getInt('clockInTime');
+
+    if (hasClockedIn && startMillis != null && !hasClockedOut) {
+      final start = DateTime.fromMillisecondsSinceEpoch(startMillis);
+      _stopwatch
+        ..reset()
+        ..start();
+      _workedDuration = DateTime.now().difference(start);
+      setState(() {});
+    }
+  }
+
+  void _checkForAutoClockOut() {
+    final now = TimeOfDay.now();
+    final latestAllowed = TimeOfDay(hour: 20, minute: 0); // 8:00 PM
+
+    if (hasClockedIn && !hasClockedOut && TimeUtils.isAfter(now, latestAllowed)) {
+      showDialog(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: Text("Missed Clock-Out?"),
+          content: Text("It's past 8:00 PM. You may have forgotten to clock out."),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text("Dismiss"),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                clockOut();
+              },
+              child: Text("Clock Out Now"),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+
+  void clockIn() async {
+    if (TimeUtils.isWithinClockInTime(_currentTime)) {
+      setState(() {
+        status = "✅ Clocked in at ${_currentTime.format(context)}";
+        hasClockedIn = true;
+        _stopwatch.start();
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('hasClockedIn', true);
+      await prefs.setInt('clockInTime', DateTime.now().millisecondsSinceEpoch);
+    } else {
+      setState(() {
+        status = "⚠️ Not within clock-in time";
+      });
+    }
+  }
+
+  void clockOut() async {
+    if (TimeUtils.isWithinClockOutTime(_currentTime)) {
+      setState(() {
+        status = "✅ Clocked out at ${_currentTime.format(context)}";
+        hasClockedOut = true;
+        _stopwatch.stop();
+      });
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('hasClockedOut', true);
+    } else {
+      setState(() {
+        status = "⚠️ Not within clock-out time";
+      });
+    }
+  }
+
+  String _formatDuration(Duration duration) {
+    String twoDigits(int n) => n.toString().padLeft(2, '0');
+    final hours = twoDigits(duration.inHours);
+    final minutes = twoDigits(duration.inMinutes.remainder(60));
+    final seconds = twoDigits(duration.inSeconds.remainder(60));
+    return "$hours:$minutes:$seconds";
+  }
+
+  @override
+  void dispose() {
+    _ticker.stop();
+    _ticker.dispose();
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final timeDisplay = _currentTime.format(context);
+
+    return Scaffold(
+      backgroundColor: Colors.white,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 60),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              Text("Current Time", style: TextStyle(fontSize: 18, color: Colors.grey[700])),
+              SizedBox(height: 8),
+              Text(timeDisplay, style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+
+              if (hasClockedIn) ...[
+                SizedBox(height: 20),
+                Text("⏱️ Working Time", style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+                SizedBox(height: 8),
+                Text(_formatDuration(_workedDuration),
+                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+              ],
+
+              SizedBox(height: 40),
+
+              // Clocked In Container with Shadow
+              hasClockedIn
+                  ? Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.green.shade300, Colors.green.shade600],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.green.shade200,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    "✅ Clocked In",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )
+                  : ElevatedButton.icon(
+                onPressed: clockIn,
+                icon: Icon(Icons.login_rounded, color: Colors.white),
+                label: Text("Clock In"),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50), backgroundColor: Colors.green.shade600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 5,
+                ),
+              ),
+
+              SizedBox(height: 16),
+
+              // Clocked Out Container with Shadow
+              hasClockedOut
+                  ? Container(
+                width: double.infinity,
+                height: 50,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.red.shade300, Colors.red.shade600],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.red.shade200,
+                      blurRadius: 10,
+                      offset: Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    "✅ Clocked Out",
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
+                ),
+              )
+                  : ElevatedButton.icon(
+                onPressed: clockOut,
+                icon: Icon(Icons.logout_rounded, color: Colors.white),
+                label: Text("Clock Out"),
+                style: ElevatedButton.styleFrom(
+                  minimumSize: Size(double.infinity, 50), backgroundColor: Colors.red.shade600,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  elevation: 5,
+                ),
+              ),
+
+              SizedBox(height: 40),
+              Text(
+                status,
+                style: TextStyle(fontSize: 16, color: Colors.black87),
+                textAlign: TextAlign.center,
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
