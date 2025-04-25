@@ -1,12 +1,10 @@
-import 'package:flutter/material.dart';
+import 'dart:developer';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
 import '../features/attendance/domain/models/employee_model.dart';
 import 'face_embedding_service.dart';
 
-
-
-class FaceRecognitionService{
+class FaceRecognitionService {
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
       performanceMode: FaceDetectorMode.accurate,
@@ -21,90 +19,73 @@ class FaceRecognitionService{
   static const double recognitionThreshold = 0.6;
 
   Future<Employee?> recognizeFace(InputImage inputImage) async {
-    try {
-      final faces = await _faceDetector.processImage(inputImage);
-      if (faces.isEmpty) return null;
+    final faces = await _faceDetector.processImage(inputImage);
+    if (faces.isEmpty) return null;
 
-      // Get the largest face (most prominent in the image)
-      faces.sort((a, b) =>
-          (b.boundingBox.width * b.boundingBox.height).compareTo(
-              a.boundingBox.width * a.boundingBox.height));
+    // Get the largest face (most prominent in the image)
+    faces.sort((a, b) =>
+        (b.boundingBox.width * b.boundingBox.height).compareTo(
+            a.boundingBox.width * a.boundingBox.height));
 
-      final face = faces.first;
+    final face = faces.first;
 
-      // Convert InputImage to image.Image for processing
-      final image = await _embeddingService.convertInputImageToImage(inputImage);
+    // Convert InputImage to image.Image for processing
+    final image = await _embeddingService.convertInputImageToImage(inputImage);
 
-      // Crop face from image
-      final croppedFace = img.copyCrop(
-        image,
-        face.boundingBox.left.toInt(),
-        face.boundingBox.top.toInt(),
-        face.boundingBox.width.toInt(),
-        face.boundingBox.height.toInt(),
-      );
+    // Crop face from image
+    final croppedFace = img.copyCrop(
+      image,
+      face.boundingBox.left.toInt(),
+      face.boundingBox.top.toInt(),
+      face.boundingBox.width.toInt(),
+      face.boundingBox.height.toInt(),
+    );
 
-      // Get embedding for the detected face
-      final probeEmbedding = await _embeddingService.getFaceEmbedding(croppedFace);
+    // Get embedding for the detected face
+    final probeEmbedding = await _embeddingService.getFaceEmbedding(croppedFace);
 
-      // Compare with all registered employees
-      String? recognizedEmployeeId;
-      double highestSimilarity = 0.0;
+    // Compare with all registered employees (assuming you will loop through a list later)
+    final storedEmbedding = _parseEmbeddingString(testEmployee.faceData);
 
-      final storedEmbedding = _parseEmbeddingString(testEmployee.faceData);
+    final similarity = _embeddingService.compareEmbeddings(
+      probeEmbedding,
+      storedEmbedding,
+    );
 
-      // Compare embeddings
-      final similarity = _embeddingService.compareEmbeddings(
-        probeEmbedding,
-        storedEmbedding,
-      );
-
-      if (similarity > recognitionThreshold && similarity > highestSimilarity) {
-        highestSimilarity = similarity;
-        recognizedEmployeeId = testEmployee.id;
-      }
-
+    if (similarity > recognitionThreshold) {
       return testEmployee;
-    } catch (e) {
-      debugPrint('Face recognition error: $e');
-      return null;
     }
+
+    return null;
   }
 
   Future<void> registerEmployeeFace(Employee employee, InputImage inputImage) async {
-    try {
-      final faces = await _faceDetector.processImage(inputImage);
-      if (faces.isEmpty) throw Exception('No face detected');
+    final faces = await _faceDetector.processImage(inputImage);
+    if (faces.isEmpty) throw Exception('No face detected');
 
-      // Get the largest face
-      faces.sort((a, b) =>
-          (b.boundingBox.width * b.boundingBox.height).compareTo(
-              a.boundingBox.width * a.boundingBox.height));
+    // Get the largest face
+    faces.sort((a, b) =>
+        (b.boundingBox.width * b.boundingBox.height).compareTo(
+            a.boundingBox.width * a.boundingBox.height));
 
-      final face = faces.first;
+    final face = faces.first;
 
-      // Convert InputImage to image.Image for processing
-      final image = await _embeddingService.convertInputImageToImage(inputImage);
+    // Convert InputImage to image.Image for processing
+    final image = await _embeddingService.convertInputImageToImage(inputImage);
 
-      // Crop face from image
-      final croppedFace = img.copyCrop(
-        image,
-        face.boundingBox.left.toInt(),
-        face.boundingBox.top.toInt(),
-        face.boundingBox.width.toInt(),
-        face.boundingBox.height.toInt(),
-      );
+    // Crop face from image
+    final croppedFace = img.copyCrop(
+      image,
+      face.boundingBox.left.toInt(),
+      face.boundingBox.top.toInt(),
+      face.boundingBox.width.toInt(),
+      face.boundingBox.height.toInt(),
+    );
 
-      // Get face embedding
-      final embedding = await _embeddingService.getFaceEmbedding(croppedFace);
-
-      // Convert embedding to string for storage
-      employee.faceData = _embeddingToString(embedding);
-
-    } catch (e) {
-      debugPrint('Face registration error: $e');
-      rethrow;
-    }
+    // Get face embedding
+    final embedding = await _embeddingService.getFaceEmbedding(croppedFace);
+    log(embedding.toString(), name: 'EMBEDDING');
+    employee.faceData = _embeddingToString(embedding);
   }
 
   String _embeddingToString(List<double> embedding) {
@@ -114,6 +95,4 @@ class FaceRecognitionService{
   List<double> _parseEmbeddingString(String embeddingString) {
     return embeddingString.split(',').map(double.parse).toList();
   }
-
-// ... rest of the class remains the same ...
 }

@@ -6,3 +6,5 @@
 -dontwarn com.google.mlkit.vision.text.japanese.JapaneseTextRecognizerOptions
 -dontwarn com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions$Builder
 -dontwarn com.google.mlkit.vision.text.korean.KoreanTextRecognizerOptions
+-keep class org.tensorflow.lite.** { *; }
+-keep class org.tensorflow.lite.c.** { *; }

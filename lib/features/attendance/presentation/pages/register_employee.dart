@@ -4,8 +4,8 @@ import 'package:attendance_system/features/attendance/domain/models/employee_mod
 import 'package:attendance_system/features/attendance/presentation/pages/recognition_employee.dart';
 import 'package:attendance_system/helpers/face_detector.dart';
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:neumorphic_ui/neumorphic_ui.dart';
 import 'package:shimmer/shimmer.dart';
 
 class EmployeeRegisterScreen extends StatefulWidget {
@@ -52,24 +52,20 @@ class _EmployeeRegisterScreenState extends State<EmployeeRegisterScreen>
 
   Future<void> _captureImage() async {
     if (!_isCameraInitialized) return;
-    try {
-      setState(() {
-        _faceDetected = false;
-      });
-      final XFile image = await _controller.takePicture();
+    setState(() {
+      _faceDetected = false;
+    });
+    final XFile image = await _controller.takePicture();
 
-      // Handle captured image
-      await faceRecognitionService.registerEmployeeFace(
-          testEmployee, InputImage.fromFile(File(image.path)));
-      setState(() {
-        _faceDetected = true;
-      });
-      await Future.delayed(const Duration(seconds: 1));
-      Navigator.of(context).pushReplacementNamed('/face-verification');
-      debugPrint('Image captured: ${image.path}');
-    } catch (e) {
-      debugPrint('Error capturing image: $e');
-    }
+    // Handle captured image
+    await faceRecognitionService.registerEmployeeFace(
+        testEmployee, InputImage.fromFilePath(image.path));
+    setState(() {
+      _faceDetected = true;
+    });
+    await Future.delayed(const Duration(seconds: 1));
+    Navigator.of(context).pushReplacementNamed('/face-verification');
+    debugPrint('Image captured: ${image.path}');
   }
 
   void _submitRegistration() {

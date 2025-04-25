@@ -8,10 +8,12 @@ List<CameraDescription> cameraDescriptions = [];
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   cameraDescriptions = await availableCameras();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(

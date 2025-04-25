@@ -27,7 +27,6 @@ dependencies:
   tflite_flutter:
   tflite_flutter_helper:
   image: ^3.3.0
-  neumorphic_ui:
   lottie: ^2.0.0
   syncfusion_flutter_charts: ^20.4.48
   flutter_advanced_switch:
@@ -46,3 +45,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/
+    - assets/ml_model/mobilefacenet.tflite
