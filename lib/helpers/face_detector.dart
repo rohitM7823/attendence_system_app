@@ -1,31 +1,53 @@
 import 'dart:developer';
+import 'dart:ui';
+
+import 'package:attendance_system/core/commons/secure_storage.dart';
+import 'package:attendance_system/data/apis.dart';
+import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:image/image.dart' as img;
+
 import '../features/attendance/domain/models/employee_model.dart';
 import 'face_embedding_service.dart';
 
 class FaceRecognitionService {
   final FaceDetector _faceDetector = FaceDetector(
     options: FaceDetectorOptions(
-      performanceMode: FaceDetectorMode.accurate,
+      performanceMode: FaceDetectorMode.fast,
       enableContours: true,
       enableLandmarks: true,
       enableClassification: true,
+      enableTracking: true,
     ),
   );
   final FaceEmbeddingService _embeddingService = FaceEmbeddingService();
+  final apiService = Apis();
 
   // Threshold for face recognition (cosine similarity)
-  static const double recognitionThreshold = 0.6;
+  static const double recognitionThreshold = 0.75;
 
-  Future<Employee?> recognizeFace(InputImage inputImage) async {
+  InputImage convertCameraImage(
+      CameraImage image, InputImageRotation rotation) {
+    final bytes = image.toNV21();
+    final size = Size(image.width.toDouble(), image.height.toDouble());
+
+    final metadata = InputImageMetadata(
+      size: size,
+      rotation: rotation,
+      format: InputImageFormat.nv21,
+      bytesPerRow: image.planes[0].bytesPerRow,
+    );
+
+    return InputImage.fromBytes(bytes: bytes, metadata: metadata);
+  }
+
+  Future<bool?> recognizeFace(InputImage inputImage) async {
     final faces = await _faceDetector.processImage(inputImage);
     if (faces.isEmpty) return null;
 
     // Get the largest face (most prominent in the image)
-    faces.sort((a, b) =>
-        (b.boundingBox.width * b.boundingBox.height).compareTo(
-            a.boundingBox.width * a.boundingBox.height));
+    faces.sort((a, b) => (b.boundingBox.width * b.boundingBox.height)
+        .compareTo(a.boundingBox.width * a.boundingBox.height));
 
     final face = faces.first;
 
@@ -42,31 +64,30 @@ class FaceRecognitionService {
     );
 
     // Get embedding for the detected face
-    final probeEmbedding = await _embeddingService.getFaceEmbedding(croppedFace);
+    final probeEmbedding =
+        await _embeddingService.getFaceEmbedding(croppedFace);
 
-    // Compare with all registered employees (assuming you will loop through a list later)
-    final storedEmbedding = _parseEmbeddingString(testEmployee.faceData);
+    var encodedFaceEmbeddings = await apiService
+        .getFaceEmbeddings(await SecureStorage.instance.deviceIdentifier);
+    if (encodedFaceEmbeddings == null) return null;
 
+    final storedEmbedding = _parseEmbeddingString(encodedFaceEmbeddings);
     final similarity = _embeddingService.compareEmbeddings(
       probeEmbedding,
       storedEmbedding,
     );
-
-    if (similarity > recognitionThreshold) {
-      return testEmployee;
-    }
-
-    return null;
+    log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
+    return similarity > recognitionThreshold; // No match found
   }
 
-  Future<void> registerEmployeeFace(Employee employee, InputImage inputImage) async {
+  Future<void> registerEmployeeFace(
+      Employee employee, InputImage inputImage) async {
     final faces = await _faceDetector.processImage(inputImage);
     if (faces.isEmpty) throw Exception('No face detected');
 
     // Get the largest face
-    faces.sort((a, b) =>
-        (b.boundingBox.width * b.boundingBox.height).compareTo(
-            a.boundingBox.width * a.boundingBox.height));
+    faces.sort((a, b) => (b.boundingBox.width * b.boundingBox.height)
+        .compareTo(a.boundingBox.width * a.boundingBox.height));
 
     final face = faces.first;
 
@@ -85,7 +106,9 @@ class FaceRecognitionService {
     // Get face embedding
     final embedding = await _embeddingService.getFaceEmbedding(croppedFace);
     log(embedding.toString(), name: 'EMBEDDING');
-    employee.faceData = _embeddingToString(embedding);
+
+    // Store the embedding as a comma-separated string
+    testEmployee.faceData = _embeddingToString(embedding);
   }
 
   String _embeddingToString(List<double> embedding) {

@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 class Employee {
   final String id;
   final String name;
@@ -16,6 +18,7 @@ class Employee {
 
   set faceData(String faceData) {
     this._faceData = faceData;
+    log(_faceData, name: 'FACE_DATA');
   }
 }
 

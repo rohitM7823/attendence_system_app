@@ -43,7 +43,8 @@ class _EmployeeRegisterScreenState extends State<EmployeeRegisterScreen>
   Future<void> _initializeCamera() async {
     _controller = CameraController(
       widget.camera,
-      ResolutionPreset.medium,
+      ResolutionPreset.high,
+      imageFormatGroup: ImageFormatGroup.nv21
     );
     await _controller.initialize();
     if (!mounted) return;
@@ -78,7 +79,7 @@ class _EmployeeRegisterScreenState extends State<EmployeeRegisterScreen>
 
   @override
   void dispose() {
-    _controller.dispose();
+    //_controller.dispose();
     _waveController.dispose();
     super.dispose();
   }

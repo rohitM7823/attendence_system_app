@@ -1,3 +1,4 @@
+import 'dart:developer';
 import 'dart:ui';
 
 import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
@@ -5,138 +6,282 @@ import 'package:attendance_system/helpers/face_detector.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:lottie/lottie.dart';
 
 class FaceRecognitionScreen extends StatefulWidget {
   final CameraDescription camera;
+  final VoidCallback? onFaceVerified;
+  final VoidCallback? onNoFaceDetected;
 
-  const FaceRecognitionScreen({super.key, required this.camera});
+  const FaceRecognitionScreen(
+      {super.key,
+      required this.camera,
+      this.onFaceVerified,
+      this.onNoFaceDetected});
 
   @override
   State<FaceRecognitionScreen> createState() => _FaceRecognitionScreenState();
 }
 
-class _FaceRecognitionScreenState extends State<FaceRecognitionScreen> {
+class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
+    with SingleTickerProviderStateMixin {
   late CameraController _controller;
   bool _isCameraInitialized = false;
-  String statusText = 'Scanning...';
+  bool scanning = false;
   double confidenceLevel = 0.85;
   List<Rect> detectedFaces = [
     const Rect.fromLTWH(100, 200, 200, 250)
   ]; // Mock data
-  Employee? recognitionResult = testEmployee;
+  Employee? recognitionResult;
+  bool _buttonPressed = false;
+  late AnimationController _animationController;
+  late Animation<double> _animation;
+  late Future<void> _initializeControllerFuture;
+  String _statusMessage = 'Align your face within the frame';
+  bool _faceVerified = false;
+  bool _cameraReady = false;
+
   FaceRecognitionService faceRecognitionService = FaceRecognitionService();
 
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
-  }
 
-  InputImage _createInputImage(CameraImage image) {
-    final metadata = InputImageMetadata(
-      size: Size(image.width.toDouble(), image.height.toDouble()),
-      rotation: _getRotation(),
-      format: InputImageFormatValue.fromRawValue(image.format.raw) ?? InputImageFormat.nv21,
-      bytesPerRow: image.planes.first.bytesPerRow,
-    );
-
-    return InputImage.fromBytes(
-      bytes: image.planes[0].bytes,
-      metadata: metadata,
-    );
-  }
-
-  InputImageRotation _getRotation() {
-    final rotation = _controller.description.sensorOrientation;
-    return InputImageRotationValue.fromRawValue(rotation) ?? InputImageRotation.rotation0deg;
-  }
-
-  Future<void> _initializeCamera() async {
     _controller = CameraController(
       widget.camera,
       ResolutionPreset.medium,
     );
-    await _controller.initialize();
-    setState(() => _isCameraInitialized = true);
 
-    _controller.startImageStream((image) async {
-      final inputImage = _createInputImage(image);
-      var emp = await faceRecognitionService.recognizeFace(inputImage);
-      if(emp != null) {
-        _controller.stopImageStream();
+    _initializeControllerFuture = _controller.initialize().then((_) {
+      setState(() {
+        _cameraReady = true;
+      });
+    });
+
+    _animationController = AnimationController(
+      duration: const Duration(seconds: 2),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    _animation =
+        Tween<double>(begin: 0.0, end: 1.0).animate(_animationController);
+  }
+
+  void _detectFace() async {
+    setState(() {
+      scanning = true;
+    });
+    final face = await _controller.takePicture();
+
+    try {
+      var result = await faceRecognitionService
+          .recognizeFace(InputImage.fromFilePath(face.path));
+
+      setState(() {
+        scanning = false;
+      });
+
+      if (result == true) {
+        widget.onFaceVerified?.call();
         setState(() {
-          recognitionResult = emp;
-          statusText = 'Verified';
+          _faceVerified = true;
+          _statusMessage = 'Face Verified!';
+        });
+        await Future.delayed(const Duration(seconds: 1));
+        Navigator.of(context).pushReplacementNamed('/clock');
+      } else {
+        setState(() {
+          _faceVerified = false;
+          _statusMessage = 'Face Verification Failed!';
         });
       }
-    },);
+    } catch (e) {
+      setState(() {
+        scanning = false;
+        _faceVerified = false;
+        _statusMessage = 'Face Verification Failed!';
+      });
+      log(e.toString(), name: 'Face Recognition issue');
+    }
+  }
+
+  Widget _buildGlassLayer() {
+    return Container(
+      width: 260,
+      height: 350,
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.3),
+        borderRadius: BorderRadius.circular(12),
+      ),
+    );
   }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _controller.dispose();
     super.dispose();
+  }
+
+  Widget _buildScanningAnimation() {
+    return AnimatedBuilder(
+      animation: _animation,
+      builder: (context, child) {
+        return CustomPaint(
+          painter: _ScannerPainter(_animation.value),
+          child: const SizedBox(
+            width: 260,
+            height: 350,
+          ),
+        );
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _isCameraInitialized
-          ? Stack(
+      appBar: AppBar(
+        title: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.face_retouching_natural, color: Colors.black),
+            Text(' Face Verification')
+          ],
+        ),
+        backgroundColor: Colors.white,
+        centerTitle: true,
+      ),
+      body: Container(
+        width: MediaQuery.of(context).size.width,
+        decoration: const BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.white, Colors.black],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter)),
+        child: Column(
+          mainAxisSize: MainAxisSize.max,
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: <Widget>[
+            const SizedBox(
+              height: 30,
+            ),
+            Stack(
+              alignment: Alignment.center,
               children: [
-                CameraPreview(_controller),
-                CustomPaint(painter: FaceOutlinePainter(faces: detectedFaces)),
-                Positioned(
-                  top: 50,
-                  left: 20,
-                  right: 20,
-                  child: GlassmorphicContainer(
-                    height: 80,
-                    borderRadius: 20,
-                    child: Row(
-                      children: [
-                        Lottie.asset('assets/face-scan.json', width: 60),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              'FACE SCAN ACTIVE',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 12,
-                                letterSpacing: 2,
+                FutureBuilder<void>(
+                  future: _initializeControllerFuture,
+                  builder: (context, snapshot) {
+                    return AnimatedOpacity(
+                      opacity: _cameraReady ? 1.0 : 0.0,
+                      duration: const Duration(milliseconds: 600),
+                      child: SizedBox(
+                        width: MediaQuery.of(context).size.width * .85,
+                        height: MediaQuery.of(context).size.height * .55,
+                        child: snapshot.connectionState == ConnectionState.done
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: CameraPreview(_controller))
+                            : Container(
+                                color: Colors.grey[900],
+                                child: const Center(
+                                  child: CircularProgressIndicator(),
+                                ),
                               ),
-                            ),
-                            Text(
-                              statusText,
-                              style: TextStyle(
-                                color: Colors.cyanAccent,
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
+                      ),
+                    );
+                  },
                 ),
-                if (recognitionResult != null)
-                  Positioned(
-                    bottom: 50,
-                    left: 20,
-                    right: 20,
-                    child: RecognitionResultCard(
-                      employee: recognitionResult!,
-                      confidence: confidenceLevel,
-                    ),
+                _buildScanningAnimation(),
+                if (scanning)
+                  SizedBox(
+                      width: 120,
+                      height: 120,
+                      child: CircularProgressIndicator(
+                        color: Colors.redAccent.withOpacity(.50),
+                        strokeCap: StrokeCap.round,
+                        strokeWidth: 5,
+                      )),
+                if (_faceVerified) _buildGlassLayer(),
+                if (_faceVerified)
+                  const Icon(
+                    Icons.check_circle,
+                    color: Colors.green,
+                    size: 120,
                   ),
               ],
-            )
-          : const Center(child: CircularProgressIndicator()),
+            ),
+            const SizedBox(
+              height: 20,
+            ),
+            Text(
+              _statusMessage,
+              style: const TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            const SizedBox(height: 10),
+            if (!scanning)
+              ElevatedButton.icon(
+                onPressed: () {
+                  _detectFace();
+                },
+                icon: _faceVerified
+                    ? const Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                      )
+                    : const Icon(
+                        Icons.camera,
+                        color: Colors.black,
+                      ),
+                label: _faceVerified
+                    ? const Text(
+                        'Employee Verified',
+                        style: TextStyle(color: Colors.green, fontSize: 20),
+                      )
+                    : const Text(
+                        'Recognise yourself',
+                        style: TextStyle(color: Colors.black, fontSize: 20),
+                      ),
+              ),
+          ],
+        ),
+      ),
     );
+  }
+}
+
+class _ScannerPainter extends CustomPainter {
+  final double progress;
+
+  _ScannerPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 10
+      ..style = PaintingStyle.stroke;
+
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(0, 0, size.width, size.height),
+      const Radius.circular(12),
+    );
+    canvas.drawRRect(rect, paint);
+
+    final lineY = size.height * progress;
+    final linePaint = Paint()
+      ..color = Colors.white.withOpacity(0.5)
+      ..strokeWidth = 2;
+
+    canvas.drawLine(
+      Offset(0, lineY),
+      Offset(size.width, lineY),
+      linePaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ScannerPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }
 
@@ -199,10 +344,13 @@ class RecognitionResultCard extends StatelessWidget {
                 Text(employee.name,
                     style: const TextStyle(fontWeight: FontWeight.bold)),
                 Text(employee.position),
-                LinearProgressIndicator(
-                  value: confidence,
-                  backgroundColor: Colors.grey.shade300,
-                  color: Colors.cyanAccent,
+                SizedBox(
+                  width: MediaQuery.of(context).size.width * 0.4,
+                  child: LinearProgressIndicator(
+                    value: confidence,
+                    backgroundColor: Colors.grey.shade300,
+                    color: Colors.cyanAccent,
+                  ),
                 ),
               ],
             ),

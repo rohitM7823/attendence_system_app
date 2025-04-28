@@ -12,6 +12,9 @@ dependencies:
   flutter:
     sdk: flutter
 
+  flutter_native_splash:
+  device_info_plus:
+  mobile_device_identifier: ^0.0.3
   cupertino_icons: ^1.0.8
   google_mlkit_face_detection: ^0.13.0
   camera: ^0.10.5
@@ -32,6 +35,9 @@ dependencies:
   flutter_advanced_switch:
   shimmer:
 
+flutter_native_splash:
+  color: '#ede7e6'
+  image: assets/logo.png
 
 dev_dependencies:
   flutter_test:

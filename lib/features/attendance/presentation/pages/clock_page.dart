@@ -5,6 +5,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/utils/time_utils.dart';
 
 class ClockPage extends StatefulWidget {
+  const ClockPage({super.key});
+
   @override
   _ClockPageState createState() => _ClockPageState();
 }
@@ -67,7 +69,7 @@ class _ClockPageState extends State<ClockPage> {
 
   void _checkForAutoClockOut() {
     final now = TimeOfDay.now();
-    final latestAllowed = TimeOfDay(hour: 20, minute: 0); // 8:00 PM
+    const latestAllowed = TimeOfDay(hour: 20, minute: 0); // 8:00 PM
 
     if (hasClockedIn && !hasClockedOut && TimeUtils.isAfter(now, latestAllowed)) {
       showDialog(
@@ -157,17 +159,17 @@ class _ClockPageState extends State<ClockPage> {
             children: [
               Text("Current Time", style: TextStyle(fontSize: 18, color: Colors.grey[700])),
               SizedBox(height: 8),
-              Text(timeDisplay, style: TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+              Text(timeDisplay, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
 
               if (hasClockedIn) ...[
                 SizedBox(height: 20),
                 Text("⏱️ Working Time", style: TextStyle(fontSize: 16, color: Colors.grey[700])),
                 SizedBox(height: 8),
                 Text(_formatDuration(_workedDuration),
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
               ],
 
-              SizedBox(height: 40),
+              const SizedBox(height: 40),
 
               // Clocked In Container with Shadow
               hasClockedIn
@@ -185,7 +187,7 @@ class _ClockPageState extends State<ClockPage> {
                     BoxShadow(
                       color: Colors.green.shade200,
                       blurRadius: 10,
-                      offset: Offset(0, 4),
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),

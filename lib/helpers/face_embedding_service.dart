@@ -6,6 +6,45 @@ import 'package:image/image.dart' as img;
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:tflite_flutter_helper/tflite_flutter_helper.dart';
 
+import 'dart:typed_data';
+import 'package:camera/camera.dart';
+
+extension CameraImageToNV21 on CameraImage {
+  Uint8List toNV21() {
+    final int width = this.width;
+    final int height = this.height;
+    final int ySize = width * height;
+    final int uvSize = (width ~/ 2) * (height ~/ 2);
+    final int totalSize = ySize + uvSize * 2;
+
+    final List<int> nv21 = List<int>.filled(totalSize, 0);
+    int yIndex = 0;
+    int uvIndex = ySize;
+
+    for (Plane plane in planes) {
+      final bytes = plane.bytes;
+      final bytesPerRow = plane.bytesPerRow;
+      final bytesPerPixel = plane.bytesPerPixel ?? 1;
+
+      for (int row = 0; row < height; row++) {
+        for (int col = 0; col < width; col++) {
+          final pixelIndex = row * bytesPerRow + col * bytesPerPixel;
+          if (plane == planes[0]) {
+            nv21[yIndex++] = bytes[pixelIndex];
+          } else if (plane == planes[1]) {
+            nv21[uvIndex++] = bytes[pixelIndex];
+          } else if (plane == planes[2]) {
+            nv21[uvIndex++] = bytes[pixelIndex];
+          }
+        }
+      }
+    }
+
+    return Uint8List.fromList(nv21);
+  }
+}
+
+
 class FaceEmbeddingService {
   late Interpreter _faceRecognitionInterpreter;
   late ImageProcessor _imageProcessor;
@@ -61,17 +100,14 @@ class FaceEmbeddingService {
     final tensorImage = TensorImage(TfLiteType.float32)..loadImage(image);
     final processedTensor = _imageProcessor.process(tensorImage);
 
-    final outputTensor = _faceRecognitionInterpreter.getOutputTensor(0);
-    final outputShape = outputTensor.shape;
-    final outputType = outputTensor.type;
-    final outputList = Float32List(outputShape.reduce((a, b) => a * b));
+    // Allocate output buffer with shape [1, 192]
+    final output = List.filled(1 * 192, 0.0).reshape([1, 192]);
 
-    _faceRecognitionInterpreter.run(processedTensor.buffer, outputList);
+    // Run inference
+    _faceRecognitionInterpreter.run(processedTensor.buffer, output);
 
-    final outputBuffer = TensorBuffer.createFixedSize(outputShape, outputType);
-    outputBuffer.loadList(outputList, shape: outputShape);
-
-    return outputBuffer.getDoubleList();
+    // Flatten and return the embedding
+    return List<double>.from(output[0]);
   }
 
   double compareEmbeddings(List<double> emb1, List<double> emb2) {
