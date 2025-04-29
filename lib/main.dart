@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:attendance_system/core/commons/device_details.dart';
 import 'package:attendance_system/data/apis.dart';
 import 'package:camera/camera.dart';
@@ -7,7 +9,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'routes/app_router.dart';
 
 List<CameraDescription> cameraDescriptions = [];
-String initialRoute = '';
+String initialRoute = '/';
 
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
@@ -20,15 +22,19 @@ void main() async {
 }
 
 Future<void> initialization() async {
-  cameraDescriptions = await availableCameras();
-  await DeviceDetails.instance.init();
-  var isRegistered = await Apis.registerDeviceIfNot();
-  bool? isApproved;
-  if (isRegistered) {
-    isApproved = await Apis.isDeviceApproved();
-  }
+  try {
+    cameraDescriptions = await availableCameras();
+    await DeviceDetails.instance.init();
+    /*var isRegistered = await Apis.registerDeviceIfNot();
+    bool? isApproved;
+    if (isRegistered) {
+      isApproved = await Apis.isDeviceApproved();
+    }
 
-  initialRoute = isRegistered && isApproved == true ? '/' : '/not_registered';
+    initialRoute = isRegistered && isApproved == true ? '/' : '/not_registered';*/
+  } catch (Ex) {
+    log(Ex.toString(), name: 'INITIALIZATION');
+  }
 }
 
 class MyApp extends StatefulWidget {

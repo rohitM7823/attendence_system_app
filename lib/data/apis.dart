@@ -11,8 +11,8 @@ class Apis {
 
     try {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
-      final response = await http.get(
-          Uri.parse('http://192.168.0.5:8000/api/device/register'),
+      final response = await http.post(
+          Uri.parse('http://192.168.0.34:8000/api/device/register'),
           headers: deviceDetails);
       if (response.statusCode == 200) {
         final deviceToken = json.decode(response.body)['device_token'];
@@ -32,7 +32,7 @@ class Apis {
     try {
       String? deviceToken = await SecureStorage.instance.deviceIdentifier;
       final response = await http.get(
-          Uri.parse('http://192.168.0.5:8000/api/device/status'),
+          Uri.parse('http://192.168.0.34:8000/api/device/status'),
           headers: {
             'platform': DeviceDetails.instance.platform,
             'device_token': deviceToken!,
@@ -54,7 +54,7 @@ class Apis {
     try {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
       final response = await http.get(
-          Uri.parse('http://192.168.0.5:8000/api/face/embeddings'),
+          Uri.parse('http://192.168.0.34:8000/api/face/embeddings'),
           headers: deviceDetails);
       return response.body;
     } catch (ex) {
