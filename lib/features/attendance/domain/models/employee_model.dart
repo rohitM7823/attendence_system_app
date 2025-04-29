@@ -1,30 +1,29 @@
-import 'dart:developer';
 
 class Employee {
-  final String id;
-  final String name;
-  final String position;
-  final String photoUrl;
-  String _faceData = '';
+  final String? id;
+  final String? name;
+  final String? position;
+  final String? photoUrl;
+  final String? faceData;
 
   Employee({
     this.id = '0',
     required this.name,
     required this.position,
     required this.photoUrl,
+    required this.faceData,
   });
 
-  String get faceData => _faceData;
 
-  set faceData(String faceData) {
-    this._faceData = faceData;
-    log(_faceData, name: 'FACE_DATA');
+  factory Employee.fromJson(Map<String, dynamic> json) {
+    return Employee(
+      id: json["emp_id"],
+      name: json["name"],
+      position: json["position"],
+      photoUrl: json["photoUrl"],
+      faceData: json["face_metadata"],
+    );
   }
+//
 }
 
-final Employee testEmployee = Employee(
-  id: '1',
-  name: 'Test Employee',
-  position: 'Senior Developer',
-  photoUrl: 'https://example.com/avatar.jpg',
-);

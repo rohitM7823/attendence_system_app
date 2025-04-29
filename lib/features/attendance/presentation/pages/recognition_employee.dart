@@ -312,7 +312,7 @@ class FaceOutlinePainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
-class RecognitionResultCard extends StatelessWidget {
+/*class RecognitionResultCard extends StatelessWidget {
   final Employee employee;
   final double confidence;
 
@@ -341,9 +341,9 @@ class RecognitionResultCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(employee.name,
+                Text(employee.name ?? '',
                     style: const TextStyle(fontWeight: FontWeight.bold)),
-                Text(employee.position),
+                Text(employee.position ??''),
                 SizedBox(
                   width: MediaQuery.of(context).size.width * 0.4,
                   child: LinearProgressIndicator(
@@ -361,7 +361,7 @@ class RecognitionResultCard extends StatelessWidget {
       ),
     );
   }
-}
+}*/
 
 class GlassmorphicContainer extends StatelessWidget {
   final double height;

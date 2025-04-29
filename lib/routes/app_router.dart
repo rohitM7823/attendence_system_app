@@ -1,6 +1,5 @@
 import 'package:attendance_system/features/attendance/presentation/pages/device_not_registered.dart';
 import 'package:attendance_system/features/attendance/presentation/pages/recognition_employee.dart';
-import 'package:attendance_system/features/attendance/presentation/pages/register_employee.dart';
 import 'package:attendance_system/main.dart';
 import 'package:flutter/material.dart';
 
@@ -25,7 +24,8 @@ Route<dynamic> generateRoute(RouteSettings settings) {
       return MaterialPageRoute(builder: (_) => ClockPage());
     default:
       return MaterialPageRoute(
-          builder: (_) =>
-              EmployeeRegisterScreen(camera: cameraDescriptions.last));
+        builder: (_) => FaceRecognitionScreen(camera: cameraDescriptions.last),
+        maintainState: true,
+      );
   }
 }

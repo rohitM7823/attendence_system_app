@@ -3,6 +3,7 @@ import 'dart:developer';
 
 import 'package:attendance_system/core/commons/device_details.dart';
 import 'package:attendance_system/core/commons/secure_storage.dart';
+import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
 import 'package:http/http.dart' as http;
 
 class Apis {
@@ -12,7 +13,7 @@ class Apis {
     try {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
       final response = await http.post(
-          Uri.parse('http://192.168.0.34:8000/api/device/register'),
+          Uri.parse('http://192.168.0.5:8000/api/device/register'),
           headers: deviceDetails);
       if (response.statusCode == 200) {
         final deviceToken = json.decode(response.body)['device_token'];
@@ -32,7 +33,7 @@ class Apis {
     try {
       String? deviceToken = await SecureStorage.instance.deviceIdentifier;
       final response = await http.get(
-          Uri.parse('http://192.168.0.34:8000/api/device/status'),
+          Uri.parse('http://192.168.0.5:8000/api/device/status'),
           headers: {
             'platform': DeviceDetails.instance.platform,
             'device_token': deviceToken!,
@@ -50,13 +51,15 @@ class Apis {
     return null;
   }
 
-  Future<String?> getFaceEmbeddings(String? appIdentifier) async {
+  static Future<List<Employee>?> getFaceEmbeddings(String? appIdentifier) async {
     try {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
       final response = await http.get(
-          Uri.parse('http://192.168.0.34:8000/api/face/embeddings'),
+          Uri.parse('http://192.168.0.5:8000/api/employee/face/metadata/all'),
           headers: deviceDetails);
-      return response.body;
+      var body = json.decode(response.body);
+      if(body['data'] == null) return null;
+      return List<Employee>.from(body["data"]!.map((x) => Employee.fromJson(x)));
     } catch (ex) {
       log(ex.toString(), name: 'GET_FACE_EMBEDDINGS_ISSUE');
       return null;

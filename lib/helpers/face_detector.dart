@@ -24,7 +24,7 @@ class FaceRecognitionService {
   final apiService = Apis();
 
   // Threshold for face recognition (cosine similarity)
-  static const double recognitionThreshold = 0.75;
+  static const double recognitionThreshold = 0.65;
 
   InputImage convertCameraImage(
       CameraImage image, InputImageRotation rotation) {
@@ -67,49 +67,23 @@ class FaceRecognitionService {
     final probeEmbedding =
         await _embeddingService.getFaceEmbedding(croppedFace);
 
-    var encodedFaceEmbeddings = await apiService
-        .getFaceEmbeddings(await SecureStorage.instance.deviceIdentifier);
-    if (encodedFaceEmbeddings == null) return null;
+    var employees = await Apis.getFaceEmbeddings(
+        await SecureStorage.instance.deviceIdentifier);
+    if (employees?.isEmpty == true) return null;
 
-    final storedEmbedding = _parseEmbeddingString(encodedFaceEmbeddings);
-    final similarity = _embeddingService.compareEmbeddings(
-      probeEmbedding,
-      storedEmbedding,
-    );
-    log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
-    return similarity > recognitionThreshold; // No match found
+    for (var employee in employees!) {
+      final storedEmbedding = _parseEmbeddingString(employee.faceData!);
+      final similarity = _embeddingService.compareEmbeddings(
+        probeEmbedding,
+        storedEmbedding,
+      );
+      log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
+      return similarity >= recognitionThreshold;
+    }
+
+    return null;
   }
 
-  Future<void> registerEmployeeFace(
-      Employee employee, InputImage inputImage) async {
-    final faces = await _faceDetector.processImage(inputImage);
-    if (faces.isEmpty) throw Exception('No face detected');
-
-    // Get the largest face
-    faces.sort((a, b) => (b.boundingBox.width * b.boundingBox.height)
-        .compareTo(a.boundingBox.width * a.boundingBox.height));
-
-    final face = faces.first;
-
-    // Convert InputImage to image.Image for processing
-    final image = await _embeddingService.convertInputImageToImage(inputImage);
-
-    // Crop face from image
-    final croppedFace = img.copyCrop(
-      image,
-      face.boundingBox.left.toInt(),
-      face.boundingBox.top.toInt(),
-      face.boundingBox.width.toInt(),
-      face.boundingBox.height.toInt(),
-    );
-
-    // Get face embedding
-    final embedding = await _embeddingService.getFaceEmbedding(croppedFace);
-    log(embedding.toString(), name: 'EMBEDDING');
-
-    // Store the embedding as a comma-separated string
-    testEmployee.faceData = _embeddingToString(embedding);
-  }
 
   String _embeddingToString(List<double> embedding) {
     return embedding.map((e) => e.toString()).join(',');
