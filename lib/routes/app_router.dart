@@ -1,3 +1,4 @@
+import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
 import 'package:attendance_system/features/attendance/presentation/pages/device_not_registered.dart';
 import 'package:attendance_system/features/attendance/presentation/pages/recognition_employee.dart';
 import 'package:attendance_system/main.dart';
@@ -21,7 +22,12 @@ Route<dynamic> generateRoute(RouteSettings settings) {
         builder: (context) => const DeviceNotRegistered(),
       );
     case '/clock':
-      return MaterialPageRoute(builder: (_) => ClockPage());
+      return MaterialPageRoute(
+          builder: (_) => ClockPage(
+              employee: (settings.arguments as Map<String, dynamic>?) != null
+                  ? Employee.fromJson(
+                      settings.arguments as Map<String, dynamic>)
+                  : null));
     default:
       return MaterialPageRoute(
         builder: (_) => FaceRecognitionScreen(camera: cameraDescriptions.last),

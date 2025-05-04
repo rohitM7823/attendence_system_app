@@ -41,7 +41,7 @@ class FaceRecognitionService {
     return InputImage.fromBytes(bytes: bytes, metadata: metadata);
   }
 
-  Future<bool?> recognizeFace(InputImage inputImage) async {
+  Future<Employee?> recognizeFace(InputImage inputImage) async {
     final faces = await _faceDetector.processImage(inputImage);
     if (faces.isEmpty) return null;
 
@@ -78,7 +78,7 @@ class FaceRecognitionService {
         storedEmbedding,
       );
       log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
-      return similarity >= recognitionThreshold;
+      return similarity >= recognitionThreshold ? employee : null;
     }
 
     return null;

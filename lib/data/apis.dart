@@ -4,16 +4,23 @@ import 'dart:developer';
 import 'package:attendance_system/core/commons/device_details.dart';
 import 'package:attendance_system/core/commons/secure_storage.dart';
 import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
+import 'package:attendance_system/features/attendance/domain/models/shift.dart';
+import 'package:attendance_system/features/attendance/domain/models/site.dart';
 import 'package:http/http.dart' as http;
 
+
+
 class Apis {
+  
+  static const BASE_URL = 'https://gsa.ezonedigital.com/api';
+  
   static Future<bool> registerDeviceIfNot() async {
     if (await SecureStorage.instance.deviceIdentifier != null) return true;
 
     try {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
       final response = await http.post(
-          Uri.parse('http://192.168.0.5:8000/api/device/register'),
+          Uri.parse('$BASE_URL/device/register'),
           headers: deviceDetails);
       if (response.statusCode == 200) {
         final deviceToken = json.decode(response.body)['device_token'];
@@ -33,7 +40,7 @@ class Apis {
     try {
       String? deviceToken = await SecureStorage.instance.deviceIdentifier;
       final response = await http.get(
-          Uri.parse('http://192.168.0.5:8000/api/device/status'),
+          Uri.parse('${BASE_URL}/device/status'),
           headers: {
             'platform': DeviceDetails.instance.platform,
             'device_token': deviceToken!,
@@ -51,17 +58,68 @@ class Apis {
     return null;
   }
 
-  static Future<List<Employee>?> getFaceEmbeddings(String? appIdentifier) async {
+  static Future<List<Employee>?> getFaceEmbeddings(
+      String? appIdentifier) async {
     try {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
       final response = await http.get(
-          Uri.parse('http://192.168.0.5:8000/api/employee/face/metadata/all'),
+          Uri.parse('$BASE_URL/employee/all'),
           headers: deviceDetails);
       var body = json.decode(response.body);
-      if(body['data'] == null) return null;
-      return List<Employee>.from(body["data"]!.map((x) => Employee.fromJson(x)));
+      if (body['employees'] == null) return null;
+      return List<Employee>.from(
+          body["employees"]!.map((x) => Employee.fromJson(x)));
     } catch (ex) {
       log(ex.toString(), name: 'GET_FACE_EMBEDDINGS_ISSUE');
+      return null;
+    }
+  }
+
+  static Future<Shift?> getAssignedShift(int shiftID) async {
+    try {
+      final response = await http
+          .get(Uri.parse('${BASE_URL}/shifts/$shiftID'));
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        return Shift.fromJson(json.decode(response.body));
+      }
+
+      return null;
+    } catch (ex) {
+      log(ex.toString(), name: 'GET_ASSIGNED_SHIFT_ISSUE');
+      return null;
+    }
+  }
+
+  static Future<Site?> getSiteRadius(int empId) async {
+    try {
+      final response = await http.get(
+          Uri.parse('${BASE_URL}/employee/$empId/site-radius'));
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        log('${json.decode(response.body)['site']}', name: 'SITE');
+        return Site.fromJson(json.decode(response.body)['site']);
+      }
+      return null;
+    } on FormatException catch  ( ex) {
+      log(ex.toString(), name: 'GET_SITE_RADIUS_ISSUE');
+      return null;
+    }
+  }
+
+  static Future<bool?> takeAttendance(
+      DateTime? clockInTime, DateTime? clockOutTime, int empId) async {
+    try {
+      final response = await http.post(
+          Uri.parse('${BASE_URL}/employee/$empId/attendance'),
+          body: jsonEncode({
+            'clock_in_time': clockInTime?.toIso8601String(),
+            'clock_out_time': clockOutTime?.toIso8601String(),
+          }));
+      if (response.statusCode == 200 && response.body.isNotEmpty) {
+        return json.decode(response.body)['status'] as bool?;
+      }
+      return null;
+    } catch (ex) {
+      log(ex.toString(), name: 'TAKE_ATTENDANCE_ISSUE');
       return null;
     }
   }

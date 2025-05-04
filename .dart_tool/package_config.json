@@ -206,6 +206,42 @@
       "languageVersion": "3.2"
     },
     {
+      "name": "geolocator",
+      "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator-12.0.0",
+      "packageUri": "lib/",
+      "languageVersion": "2.15"
+    },
+    {
+      "name": "geolocator_android",
+      "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_android-4.3.1",
+      "packageUri": "lib/",
+      "languageVersion": "2.15"
+    },
+    {
+      "name": "geolocator_apple",
+      "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_apple-2.3.13",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "geolocator_platform_interface",
+      "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_platform_interface-4.2.6",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "geolocator_web",
+      "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_web-4.1.3",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
+      "name": "geolocator_windows",
+      "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/geolocator_windows-0.2.5",
+      "packageUri": "lib/",
+      "languageVersion": "3.5"
+    },
+    {
       "name": "google_mlkit_commons",
       "rootUri": "file:///C:/Users/stj17/AppData/Local/Pub/Cache/hosted/pub.dev/google_mlkit_commons-0.11.0",
       "packageUri": "lib/",
@@ -614,7 +650,7 @@
       "languageVersion": "3.5"
     }
   ],
-  "generated": "2025-04-29T16:51:07.633356Z",
+  "generated": "2025-05-04T02:18:01.071466Z",
   "generator": "pub",
   "generatorVersion": "3.5.4",
   "flutterRoot": "file:///D:/Downloads/flutter_windows_3.24.5-stable/flutter",

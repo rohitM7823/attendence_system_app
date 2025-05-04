@@ -1,11 +1,16 @@
 import 'dart:async';
+
+import 'package:attendance_system/data/apis.dart';
+import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../../../core/utils/time_utils.dart';
 
 class ClockPage extends StatefulWidget {
-  const ClockPage({super.key});
+  const ClockPage({super.key, this.employee});
+
+  final Employee? employee;
 
   @override
   _ClockPageState createState() => _ClockPageState();
@@ -26,7 +31,6 @@ class _ClockPageState extends State<ClockPage> {
   void initState() {
     super.initState();
     _currentTime = TimeOfDay.now();
-
     _stopwatch = Stopwatch();
     _ticker = Ticker((_) {
       if (_stopwatch.isRunning) {
@@ -39,11 +43,12 @@ class _ClockPageState extends State<ClockPage> {
 
     _startClock();
     _loadClockInStatus();
-    _timer = Timer.periodic(Duration(minutes: 1), (_) => _checkForAutoClockOut());
+    _timer = Timer.periodic(
+        const Duration(minutes: 1), (_) => _checkForAutoClockOut());
   }
 
   void _startClock() {
-    Future.delayed(Duration(seconds: 1), () {
+    Future.delayed(const Duration(seconds: 1), () {
       setState(() {
         _currentTime = TimeOfDay.now();
       });
@@ -52,17 +57,12 @@ class _ClockPageState extends State<ClockPage> {
   }
 
   Future<void> _loadClockInStatus() async {
-    final prefs = await SharedPreferences.getInstance();
-    hasClockedIn = prefs.getBool('hasClockedIn') ?? false;
-    hasClockedOut = prefs.getBool('hasClockedOut') ?? false;
-    final int? startMillis = prefs.getInt('clockInTime');
-
-    if (hasClockedIn && startMillis != null && !hasClockedOut) {
-      final start = DateTime.fromMillisecondsSinceEpoch(startMillis);
+    if (widget.employee?.clockInTime != null) {
+      final start = widget.employee?.clockInTime;
       _stopwatch
         ..reset()
         ..start();
-      _workedDuration = DateTime.now().difference(start);
+      _workedDuration = DateTime.now().difference(start!);
       setState(() {});
     }
   }
@@ -71,12 +71,15 @@ class _ClockPageState extends State<ClockPage> {
     final now = TimeOfDay.now();
     const latestAllowed = TimeOfDay(hour: 20, minute: 0); // 8:00 PM
 
-    if (hasClockedIn && !hasClockedOut && TimeUtils.isAfter(now, latestAllowed)) {
+    if (hasClockedIn &&
+        !hasClockedOut &&
+        TimeUtils.isAfter(now, latestAllowed)) {
       showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: Text("Missed Clock-Out?"),
-          content: Text("It's past 8:00 PM. You may have forgotten to clock out."),
+          content:
+              Text("It's past 8:00 PM. You may have forgotten to clock out."),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -96,36 +99,27 @@ class _ClockPageState extends State<ClockPage> {
   }
 
   void clockIn() async {
-    if (TimeUtils.isWithinClockInTime(_currentTime)) {
-      setState(() {
-        status = "✅ Clocked in at ${_currentTime.format(context)}";
-        hasClockedIn = true;
-        _stopwatch.start();
-      });
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('hasClockedIn', true);
-      await prefs.setInt('clockInTime', DateTime.now().millisecondsSinceEpoch);
-    } else {
-      setState(() {
-        status = "⚠️ Not within clock-in time";
-      });
+    if (widget.employee?.id != null) {
+      await Apis.takeAttendance(
+          _currentTime.toDateTime, null, widget.employee!.id!);
     }
+    setState(() {
+      status = "✅ Clocked in at ${_currentTime.format(context)}";
+      hasClockedIn = true;
+      _stopwatch.start();
+    });
   }
 
   void clockOut() async {
-    if (TimeUtils.isWithinClockOutTime(_currentTime)) {
-      setState(() {
-        status = "✅ Clocked out at ${_currentTime.format(context)}";
-        hasClockedOut = true;
-        _stopwatch.stop();
-      });
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('hasClockedOut', true);
-    } else {
-      setState(() {
-        status = "⚠️ Not within clock-out time";
-      });
+    if (widget.employee?.id != null) {
+      await Apis.takeAttendance(
+          null, _currentTime.toDateTime, widget.employee!.id!);
     }
+    setState(() {
+      status = "✅ Clocked out at ${_currentTime.format(context)}";
+      hasClockedOut = true;
+      _stopwatch.stop();
+    });
   }
 
   String _formatDuration(Duration duration) {
@@ -157,16 +151,21 @@ class _ClockPageState extends State<ClockPage> {
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.start,
             children: [
-              Text("Current Time", style: TextStyle(fontSize: 18, color: Colors.grey[700])),
+              Text("Current Time",
+                  style: TextStyle(fontSize: 18, color: Colors.grey[700])),
               SizedBox(height: 8),
-              Text(timeDisplay, style: const TextStyle(fontSize: 48, fontWeight: FontWeight.bold)),
+              Text(timeDisplay,
+                  style: const TextStyle(
+                      fontSize: 48, fontWeight: FontWeight.bold)),
 
               if (hasClockedIn) ...[
                 SizedBox(height: 20),
-                Text("⏱️ Working Time", style: TextStyle(fontSize: 16, color: Colors.grey[700])),
+                Text("⏱️ Working Time",
+                    style: TextStyle(fontSize: 16, color: Colors.grey[700])),
                 SizedBox(height: 8),
                 Text(_formatDuration(_workedDuration),
-                    style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+                    style: const TextStyle(
+                        fontSize: 32, fontWeight: FontWeight.bold)),
               ],
 
               const SizedBox(height: 40),
@@ -174,93 +173,110 @@ class _ClockPageState extends State<ClockPage> {
               // Clocked In Container with Shadow
               hasClockedIn
                   ? Container(
-                width: double.infinity,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.green.shade300, Colors.green.shade600],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.green.shade200,
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    "✅ Clocked In",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              )
+                      width: double.infinity,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.green.shade300,
+                            Colors.green.shade600
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.green.shade200,
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          "✅ Clocked In",
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
                   : ElevatedButton.icon(
-                onPressed: clockIn,
-                icon: Icon(Icons.login_rounded, color: Colors.white),
-                label: Text("Clock In"),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: const Size(double.infinity, 50), backgroundColor: Colors.green.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 5,
-                ),
-              ),
+                      onPressed: clockIn,
+                      icon: Icon(Icons.login_rounded, color: Colors.white),
+                      label: Text("Clock In"),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: const Size(double.infinity, 50),
+                        backgroundColor: Colors.green.shade600,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 5,
+                      ),
+                    ),
 
               SizedBox(height: 16),
 
               // Clocked Out Container with Shadow
               hasClockedOut
                   ? Container(
-                width: double.infinity,
-                height: 50,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.red.shade300, Colors.red.shade600],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.red.shade200,
-                      blurRadius: 10,
-                      offset: Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Center(
-                  child: Text(
-                    "✅ Clocked Out",
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              )
+                      width: double.infinity,
+                      height: 50,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.red.shade300, Colors.red.shade600],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.red.shade200,
+                            blurRadius: 10,
+                            offset: Offset(0, 4),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          "✅ Clocked Out",
+                          style: TextStyle(
+                              color: Colors.white, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    )
                   : ElevatedButton.icon(
-                onPressed: clockOut,
-                icon: Icon(Icons.logout_rounded, color: Colors.white),
-                label: Text("Clock Out"),
-                style: ElevatedButton.styleFrom(
-                  minimumSize: Size(double.infinity, 50), backgroundColor: Colors.red.shade600,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 5,
-                ),
-              ),
+                      onPressed: clockOut,
+                      icon: Icon(Icons.logout_rounded, color: Colors.white),
+                      label: Text("Clock Out"),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(double.infinity, 50),
+                        backgroundColor: Colors.red.shade600,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 5,
+                      ),
+                    ),
 
               SizedBox(height: 40),
               Text(
                 status,
                 style: TextStyle(fontSize: 16, color: Colors.black87),
                 textAlign: TextAlign.center,
-              )
+              ),
+              SizedBox(height: 16),
+              TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacementNamed('/');
+                  },
+                  child: const Text(
+                    'Took Another Attendance',
+                    style: TextStyle(fontSize: 16, color: Colors.redAccent),
+                  )),
+              const SizedBox(height: 16),
             ],
           ),
         ),

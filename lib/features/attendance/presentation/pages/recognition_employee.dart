@@ -1,11 +1,14 @@
 import 'dart:developer';
 import 'dart:ui';
 
+import 'package:attendance_system/data/apis.dart';
 import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
 import 'package:attendance_system/helpers/face_detector.dart';
+import 'package:attendance_system/helpers/location_handler.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:intl/intl.dart';
 
 class FaceRecognitionScreen extends StatefulWidget {
   final CameraDescription camera;
@@ -71,29 +74,28 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
       scanning = true;
     });
     final face = await _controller.takePicture();
+    var result = await faceRecognitionService
+        .recognizeFace(InputImage.fromFilePath(face.path));
 
-    try {
-      var result = await faceRecognitionService
-          .recognizeFace(InputImage.fromFilePath(face.path));
+    setState(() {
+      scanning = false;
+    });
 
+    if (result != null) {
+      widget.onFaceVerified?.call();
       setState(() {
-        scanning = false;
+        _faceVerified = true;
+        _statusMessage = 'Face Verified!';
       });
+      await _checkClockAndNavigateAttendence(result);
+    } else {
+      setState(() {
+        _faceVerified = false;
+        _statusMessage = 'Face Verification Failed!';
+      });
+    }
+    try {
 
-      if (result == true) {
-        widget.onFaceVerified?.call();
-        setState(() {
-          _faceVerified = true;
-          _statusMessage = 'Face Verified!';
-        });
-        await Future.delayed(const Duration(seconds: 1));
-        Navigator.of(context).pushReplacementNamed('/clock');
-      } else {
-        setState(() {
-          _faceVerified = false;
-          _statusMessage = 'Face Verification Failed!';
-        });
-      }
     } catch (e) {
       setState(() {
         scanning = false;
@@ -246,6 +248,86 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
         ),
       ),
     );
+  }
+
+  Future<void> _checkClockAndNavigateAttendence(Employee employee) async {
+    if (employee.shift != null) {
+      var clockInWindow = employee.shift?.clockInWindow;
+      var clockOutWindow = employee.shift?.clockOutWindow;
+
+      if (clockInWindow?.start != null &&
+          clockInWindow!.start!.isBefore(DateTime.now()) &&
+          clockInWindow.end != null &&
+          clockInWindow.end!.isAfter(DateTime.now())) {
+        final site = await Apis.getSiteRadius(employee.id!);
+        log('${site?.toJson()}', name: 'STIE');
+        if (site != null) {
+          var result = await LocationHandler.isWithinRadius(
+              context: context,
+              targetLatitude: site.location!.lat,
+              targetLongitude: site.location!.lng,
+              radiusInMeters: site.radius!.toDouble());
+          log('$result', name: 'RESULT');
+          if (result == false) {
+            LocationHandler.showOutOfRadiusDialog(context);
+            return;
+          } else if(result == true) {
+            Navigator.of(context)
+                .pushReplacementNamed('/clock', arguments: employee.toJson());
+          }
+        }
+      } else if (clockOutWindow?.start != null &&
+          clockOutWindow!.start!.isBefore(DateTime.now()) &&
+          clockOutWindow.end != null &&
+          clockOutWindow.end!.isAfter(DateTime.now())) {
+        final site = await Apis.getSiteRadius(employee.id!);
+        if (site != null) {
+          var result = await LocationHandler.isWithinRadius(
+              context: context,
+              targetLatitude: site.location!.lat,
+              targetLongitude: site.location!.lng,
+              radiusInMeters: site.radius!.toDouble());
+          if (result == false) {
+            LocationHandler.showOutOfRadiusDialog(context);
+            return;
+          } else if(result == true) {
+            Navigator.of(context)
+                .pushReplacementNamed('/clock', arguments: employee.toJson());
+          }
+        }
+      } else {
+        showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text(
+              "Error",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            content: const Text(
+              "You time window has been expired!!",
+              style: TextStyle(fontSize: 16),
+            ),
+            actionsPadding: const EdgeInsets.only(right: 8, bottom: 8),
+            actions: [
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: Colors.white,
+                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text("OK"),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }
 
