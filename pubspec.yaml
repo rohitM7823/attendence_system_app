@@ -35,6 +35,9 @@ dependencies:
   flutter_advanced_switch:
   shimmer:
   geolocator:
+  google_fonts:
+  dotted_border: ^2.0.0
+
 
 flutter_native_splash:
   color: '#ede7e6'
