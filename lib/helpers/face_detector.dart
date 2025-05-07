@@ -24,7 +24,7 @@ class FaceRecognitionService {
   final apiService = Apis();
 
   // Threshold for face recognition (cosine similarity)
-  static const double recognitionThreshold = 0.65;
+  static const double recognitionThreshold = 0.75;
 
   InputImage convertCameraImage(
       CameraImage image, InputImageRotation rotation) {
@@ -66,24 +66,28 @@ class FaceRecognitionService {
     // Get embedding for the detected face
     final probeEmbedding =
         await _embeddingService.getFaceEmbedding(croppedFace);
-
+    Employee? verified;
     var employees = await Apis.getFaceEmbeddings(
         await SecureStorage.instance.deviceIdentifier);
+    log("${employees?.length}", name: 'EMPLOYEES');
     if (employees?.isEmpty == true) return null;
 
     for (var employee in employees!) {
+      //log('${employee.name} -- ${employee.faceData}', name: "EMPLOYEE");
       final storedEmbedding = _parseEmbeddingString(employee.faceData!);
       final similarity = _embeddingService.compareEmbeddings(
         probeEmbedding,
         storedEmbedding,
       );
       log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
-      return similarity >= recognitionThreshold ? employee : null;
+      if(similarity >= recognitionThreshold) {
+        verified = employee;
+        break;
+      }
     }
 
-    return null;
+    return verified;
   }
-
 
   String _embeddingToString(List<double> embedding) {
     return embedding.map((e) => e.toString()).join(',');

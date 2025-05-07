@@ -1,17 +1,12 @@
 import 'dart:developer';
 
 import 'package:attendance_system/core/commons/device_details.dart';
-import 'package:attendance_system/data/apis.dart';
+import 'package:attendance_system/routes/app_router.dart';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
-
-import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:dotted_border/dotted_border.dart';
-import 'routes/app_router.dart';
 
 List<CameraDescription> cameraDescriptions = [];
 String initialRoute = '/';
@@ -56,10 +51,12 @@ class _MyAppState extends State<MyApp> {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Employee Attendance',
-      theme: AppTheme.lightTheme,
-      // onGenerateRoute: generateRoute,
-      // initialRoute: widget.initialRoute,
-      home: SignInScreenWidget(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      onGenerateRoute: generateRoute,
+      initialRoute: widget.initialRoute,
+      //home: SignInScreenWidget(),
     );
   }
 }

@@ -9,7 +9,6 @@ import 'package:attendance_system/features/attendance/domain/models/site.dart';
 import 'package:http/http.dart' as http;
 
 
-
 class Apis {
   
   static const BASE_URL = 'https://gsa.ezonedigital.com/api';
@@ -21,7 +20,8 @@ class Apis {
       final deviceDetails = await DeviceDetails.instance.currentDetails;
       final response = await http.post(
           Uri.parse('$BASE_URL/device/register'),
-          headers: deviceDetails);
+          headers: deviceDetails
+      );
       if (response.statusCode == 200) {
         final deviceToken = json.decode(response.body)['device_token'];
         if (deviceToken == null) return false;
