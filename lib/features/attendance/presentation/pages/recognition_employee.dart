@@ -85,7 +85,8 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
       widget.onFaceVerified?.call();
       setState(() {
         _faceVerified = true;
-        _statusMessage = 'Face Verified!';
+        _statusMessage =
+            'Face Verified!\nEmployee: ${result.name} | ID: ${result.empId}\nAadhar Card: ${result.aadharCard} | Phone: ${result.mobileNumber}';
       });
       await _checkClockAndNavigateAttendence(result);
     } else {
@@ -94,9 +95,7 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
         _statusMessage = 'Face Verification Failed!';
       });
     }
-    try {
-
-    } catch (e) {
+    try {} catch (e) {
       setState(() {
         scanning = false;
         _faceVerified = false;
@@ -218,6 +217,7 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
             Text(
               _statusMessage,
               style: const TextStyle(color: Colors.white, fontSize: 16),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 10),
             if (!scanning)
@@ -254,7 +254,6 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
     if (employee.shift != null) {
       var clockInWindow = employee.shift?.clockInWindow;
       var clockOutWindow = employee.shift?.clockOutWindow;
-
       if (clockInWindow?.start != null &&
           clockInWindow!.start!.isBefore(DateTime.now()) &&
           clockInWindow.end != null &&
@@ -271,7 +270,7 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
           if (result == false) {
             LocationHandler.showOutOfRadiusDialog(context);
             return;
-          } else if(result == true) {
+          } else if (result == true) {
             Navigator.of(context)
                 .pushReplacementNamed('/clock', arguments: employee.toJson());
           }
@@ -290,7 +289,7 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
           if (result == false) {
             LocationHandler.showOutOfRadiusDialog(context);
             return;
-          } else if(result == true) {
+          } else if (result == true) {
             Navigator.of(context)
                 .pushReplacementNamed('/clock', arguments: employee.toJson());
           }

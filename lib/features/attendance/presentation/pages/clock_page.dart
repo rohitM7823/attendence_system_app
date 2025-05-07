@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer';
 
 import 'package:attendance_system/data/apis.dart';
 import 'package:attendance_system/features/attendance/domain/models/employee_model.dart';
@@ -99,7 +100,9 @@ class _ClockPageState extends State<ClockPage> {
   }
 
   void clockIn() async {
+    log('${widget.employee?.id}', name: 'EMPLOYEE_ID');
     if (widget.employee?.id != null) {
+
       await Apis.takeAttendance(
           _currentTime.toDateTime, null, widget.employee!.id!);
     }
