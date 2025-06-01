@@ -45,10 +45,10 @@ class Shift {
   factory Shift.fromJson(Map<String, dynamic> json) => Shift(
         id: json["id"],
         clockIn:
-            json["clock_in"] == null ? null : DateTime.parse(json["clock_in"]).toLocal(),
+            json["clock_in"] == null ? null : DateTime.parse(json["clock_in"]),
         clockOut: json["clock_out"] == null
             ? null
-            : DateTime.parse(json["clock_out"]).toLocal(),
+            : DateTime.parse(json["clock_out"]),
         clockInWindow: json["clock_in_window"] == null
             ? null
             : ClockWindow.fromJson(json["clock_in_window"]),
@@ -98,8 +98,8 @@ class ClockWindow {
   String toRawJson() => json.encode(toJson());
 
   factory ClockWindow.fromJson(Map<String, dynamic> json) => ClockWindow(
-        start: json["start"] == null ? null : DateTime.parse(json["start"]).toLocal(),
-        end: json["end"] == null ? null : DateTime.parse(json["end"]).toLocal(),
+        start: json["start"] == null ? null : DateTime.parse(json["start"]),
+        end: json["end"] == null ? null : DateTime.parse(json["end"]),
       );
 
   Map<String, dynamic> toJson() => {
