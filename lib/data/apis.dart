@@ -54,21 +54,6 @@ class Apis {
     return null;
   }
 
-  static Future<List<Employee>?> getFaceEmbeddings(
-      String? appIdentifier) async {
-    try {
-      final deviceDetails = await DeviceDetails.instance.currentDetails;
-      final response = await http.get(Uri.parse('$BASE_URL/employee/all'),
-          headers: deviceDetails);
-      var body = json.decode(response.body);
-      if (body['employees'] == null) return null;
-      return List<Employee>.from(
-          body["employees"]!.map((x) => Employee.fromJson(x)));
-    } catch (ex) {
-      log(ex.toString(), name: 'GET_FACE_EMBEDDINGS_ISSUE');
-      return null;
-    }
-  }
 
   static Future<Shift?> getAssignedShift(int shiftID) async {
     try {
@@ -113,7 +98,7 @@ class Apis {
       log(data, name: 'TAKE_ATTENDANCE_DATA');
       final response = await http.post(
           Uri.parse('$BASE_URL/employee/$empId/attendance-take'),
-          headers: {"Accept": "application/json"},
+          headers: {"Accept": "application/json", 'Content-Type': 'application/json'},
           body: data);
 
       if (response.statusCode == 200 && response.body.isNotEmpty) {
@@ -132,5 +117,25 @@ class Apis {
       log(ex.toString(), name: 'TAKE_ATTENDANCE_ISSUE');
       return null;
     }
+  }
+
+  static Future<List<Employee>?> employees(
+      {String search = '', int? page = 1, int limit = 10}) async {
+    try {
+      final response = await http.get(
+        Uri.parse(
+            '$BASE_URL/employee/all?search=$search&page=$page&limit=$limit'),
+      );
+      if (response.statusCode == 200) {
+        return List<Employee>.from(json
+            .decode(response.body)['employees']!
+            .map((e) => Employee.fromJson(e)));
+      }
+    } catch (ex) {
+      log(ex.toString(), name: 'EMPLOYEES_ISSUE');
+      return null;
+    }
+
+    return null;
   }
 }

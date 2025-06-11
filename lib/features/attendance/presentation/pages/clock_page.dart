@@ -28,6 +28,8 @@ class _ClockPageState extends State<ClockPage> {
   late Ticker _ticker;
   late Timer _timer;
 
+  bool isMissedClockOutShown = false;
+
   @override
   void initState() {
     super.initState();
@@ -44,8 +46,12 @@ class _ClockPageState extends State<ClockPage> {
 
     _startClock();
     _loadClockInStatus();
-    _timer = Timer.periodic(
-        const Duration(minutes: 1), (_) => _checkForAutoClockOut());
+    _timer = Timer.periodic(const Duration(minutes: 1), (_) {
+      if (isMissedClockOutShown) {
+        isMissedClockOutShown = true;
+        _checkForAutoClockOut();
+      }
+    });
   }
 
   void _startClock() {
@@ -64,23 +70,28 @@ class _ClockPageState extends State<ClockPage> {
         ..reset()
         ..start();
       _workedDuration = DateTime.now().difference(start!);
+      hasClockedIn = true;
       setState(() {});
     }
   }
 
-  void _checkForAutoClockOut() {
+  void _checkForAutoClockOut() async {
     final now = TimeOfDay.now();
-    const latestAllowed = TimeOfDay(hour: 20, minute: 0); // 8:00 PM
+    var latestAllowed = widget.employee?.shift?.clockOutWindow?.end != null
+        ? TimeOfDay(
+            hour: widget.employee!.shift!.clockOutWindow!.end!.hour,
+            minute: widget.employee!.shift!.clockOutWindow!.end!.minute)
+        : TimeOfDay.now(); // 8:00 PM
 
     if (hasClockedIn &&
         !hasClockedOut &&
         TimeUtils.isAfter(now, latestAllowed)) {
-      showDialog(
+      await showDialog(
         context: context,
         builder: (_) => AlertDialog(
           title: Text("Missed Clock-Out?"),
-          content:
-              Text("It's past 8:00 PM. You may have forgotten to clock out."),
+          content: Text(
+              "It's past ${latestAllowed.format(context)}. You may have forgotten to clock out."),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
@@ -96,13 +107,13 @@ class _ClockPageState extends State<ClockPage> {
           ],
         ),
       );
+      isMissedClockOutShown = false;
     }
   }
 
   void clockIn() async {
     log('${widget.employee?.id}', name: 'EMPLOYEE_ID');
     if (widget.employee?.id != null) {
-
       await Apis.takeAttendance(
           _currentTime.toDateTime, null, widget.employee!.id!);
     }

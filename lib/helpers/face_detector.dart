@@ -1,7 +1,6 @@
 import 'dart:developer';
 import 'dart:ui';
 
-import 'package:attendance_system/core/commons/secure_storage.dart';
 import 'package:attendance_system/data/apis.dart';
 import 'package:camera/camera.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
@@ -41,6 +40,11 @@ class FaceRecognitionService {
     return InputImage.fromBytes(bytes: bytes, metadata: metadata);
   }
 
+  bool hasMore = true;
+  int currentPage = 1;
+  bool isLoading = false;
+  List<Employee> employees = [];
+
   Future<Employee?> recognizeFace(InputImage inputImage) async {
     final faces = await _faceDetector.processImage(inputImage);
     if (faces.isEmpty) return null;
@@ -67,23 +71,36 @@ class FaceRecognitionService {
     final probeEmbedding =
         await _embeddingService.getFaceEmbedding(croppedFace);
     Employee? verified;
-    var employees = await Apis.getFaceEmbeddings(
-        await SecureStorage.instance.deviceIdentifier);
-    log("${employees?.length}", name: 'EMPLOYEES');
-    if (employees?.isEmpty == true) return null;
 
-    for (var employee in employees!) {
-      //log('${employee.name} -- ${employee.faceData}', name: "EMPLOYEE");
-      final storedEmbedding = _parseEmbeddingString(employee.faceData!);
-      final similarity = _embeddingService.compareEmbeddings(
-        probeEmbedding,
-        storedEmbedding,
-      );
-      log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
-      if(similarity >= recognitionThreshold) {
-        verified = employee;
-        break;
+    currentPage = 1;
+    hasMore = true;
+    employees = [];
+    while (hasMore) {
+      var newEmployees = await Apis.employees(page: currentPage);
+      if (newEmployees?.isNotEmpty == true) {
+        employees = newEmployees!;
+        currentPage++;
+      } else {
+        hasMore = false;
       }
+      log("${employees.length}", name: 'EMPLOYEES');
+      if (employees.isEmpty == true) return null;
+
+      for (var employee in employees) {
+        //log('${employee.name} -- ${employee.faceData}', name: "EMPLOYEE");
+        final storedEmbedding = _parseEmbeddingString(employee.faceData!);
+        final similarity = _embeddingService.compareEmbeddings(
+          probeEmbedding,
+          storedEmbedding,
+        );
+        log('$similarity --- $recognitionThreshold', name: 'SIMILARITY');
+        if (similarity >= recognitionThreshold) {
+          verified = employee;
+          break;
+        }
+      }
+
+      if (verified != null) break;
     }
 
     return verified;
