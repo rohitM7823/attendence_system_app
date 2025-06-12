@@ -70,4 +70,38 @@ class Employee {
     "mobile_number": mobileNumber,
     "shift": shift?.toJson(),
   };
+
+  Employee copyWith({
+    int? id,
+    String? name,
+    String? empId,
+    String? address,
+    String? token,
+    String? accountNumber,
+    String? siteName,
+    Map<String, dynamic>? location,
+    DateTime? clockInTime,
+    DateTime? clockOutTime,
+    String? aadharCard,
+    String? mobileNumber,
+    Shift? shift,
+    String? faceData,
+  }) {
+    return Employee(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      empId: empId ?? this.empId,
+      address: address ?? this.address,
+      token: token ?? this.token,
+      accountNumber: accountNumber ?? this.accountNumber,
+      siteName: siteName ?? this.siteName,
+      location: location ?? this.location,
+      clockInTime: clockInTime ?? this.clockInTime,
+      clockOutTime: clockOutTime ?? this.clockOutTime,
+      aadharCard: aadharCard ?? this.aadharCard,
+      mobileNumber: mobileNumber ?? this.mobileNumber,
+      shift: shift ?? this.shift,
+      faceData: faceData ?? this.faceData,
+    );
+  }
 }
