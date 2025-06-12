@@ -10,6 +10,7 @@ import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 
 class Apis {
+  // static const BASE_URL = 'http://192.168.0.2:8000/api';
   static const BASE_URL = 'https://gsa.ezonedigital.com/api';
 
   static Future<bool> registerDeviceIfNot() async {

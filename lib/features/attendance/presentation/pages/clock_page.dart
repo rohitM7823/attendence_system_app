@@ -62,27 +62,28 @@ class _ClockPageState extends State<ClockPage> {
   }
 
   Future<void> _loadClockInStatus() async {
-    if (widget.employee?.clockInTime != null) {
-      final start = widget.employee!.clockInTime!;
-      _stopwatch
-        ..reset()
-        ..start();
-      _workedDuration = DateTime.now().difference(start);
+    final clockIn = widget.employee?.clockInTime;
+    final clockOut = widget.employee?.clockOutTime;
+
+    if (clockIn != null) {
       hasClockedIn = true;
-    }
 
-    if (widget.employee?.clockOutTime != null) {
-      hasClockedOut = true;
-
-      // Calculate total worked time from clock-in to clock-out
-      if (widget.employee?.clockInTime != null) {
-        _workedDuration = widget.employee!.clockOutTime!
-            .difference(widget.employee!.clockInTime!);
+      if (clockOut == null) {
+        // Still working, calculate live duration
+        _stopwatch
+          ..reset()
+          ..start();
+        _workedDuration = DateTime.now().difference(clockIn);
+      } else {
+        // Already clocked out — show total duration only
+        hasClockedOut = true;
+        _workedDuration = clockOut.difference(clockIn);
       }
     }
 
     setState(() {});
   }
+
 
   void _checkForAutoClockOut() async {
     final now = TimeOfDay.now();

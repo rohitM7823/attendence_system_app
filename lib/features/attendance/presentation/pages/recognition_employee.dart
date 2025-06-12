@@ -254,9 +254,6 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
     if (employee.shift != null) {
       var clockInWindow = employee.shift?.clockInWindow;
       var clockOutWindow = employee.shift?.clockOutWindow;
-      Navigator.of(context)
-          .pushReplacementNamed('/clock', arguments: employee.toJson());
-      return;
       if (clockInWindow?.start != null &&
           clockInWindow!.start!.isBefore(DateTime.now()) &&
           clockInWindow.end != null &&
@@ -298,6 +295,9 @@ class _FaceRecognitionScreenState extends State<FaceRecognitionScreen>
           }
         }
       } else {
+        setState(() {
+          _faceVerified = false;
+        });
         showDialog(
           context: context,
           builder: (context) => AlertDialog(
